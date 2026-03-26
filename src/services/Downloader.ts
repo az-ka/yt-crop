@@ -35,12 +35,8 @@ export const DownloaderLive = Layer.succeed(
           "--fixup", "warn",
           "-o", absolutePath, 
           url
-        ).pipe(
-          Command.stdout("inherit"),
-          Command.stderr("inherit")
         )
         
-        yield* Effect.logInfo(`Downloading to: ${absolutePath}`)
         const exitCode = yield* Command.exitCode(command)
         
         if (exitCode !== 0) {

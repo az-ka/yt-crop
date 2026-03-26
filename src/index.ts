@@ -81,14 +81,14 @@ const main = Effect.gen(function* () {
     const startInput = yield* Effect.promise(() => 
       p.text({
         message: `Potongan #${clips.length + 1} - Mulai (Max: ${durationLabel}):`,
-        placeholder: "Contoh: 130 untuk 01:30 atau 10000 untuk 01:00:00",
+        placeholder: "Cth: 130 atau 10000",
         validate: (value) => {
           try { 
             const normalized = normalizeTime(value || "");
             Schema.decodeSync(TimeFormatSchema)(normalized); 
             const sec = timeToSeconds(value || "");
-            if (sec >= totalSeconds) return `Melebihi durasi video!`;
-          } catch (_) { return "Format waktu salah!"; }
+            if (sec >= totalSeconds) return `Melebihi durasi!`;
+          } catch (_) { return "Format salah!"; }
         }
       })
     );
@@ -98,15 +98,15 @@ const main = Effect.gen(function* () {
     const endInput = yield* Effect.promise(() => 
       p.text({
         message: `Potongan #${clips.length + 1} - Sampai (Max: ${durationLabel}):`,
-        placeholder: "Contoh: 200 untuk 02:00",
+        placeholder: "Cth: 200",
         validate: (value) => {
           try { 
             const normalized = normalizeTime(value || "");
             Schema.decodeSync(TimeFormatSchema)(normalized); 
             const sec = timeToSeconds(value || "");
-            if (sec > totalSeconds) return `Melebihi durasi video!`;
-            if (sec <= timeToSeconds(start)) return "Harus setelah waktu mulai!";
-          } catch (_) { return "Format waktu salah!"; }
+            if (sec > totalSeconds) return `Melebihi durasi!`;
+            if (sec <= timeToSeconds(start)) return "Harus setelah mulai!";
+          } catch (_) { return "Format salah!"; }
         }
       })
     );
@@ -116,18 +116,18 @@ const main = Effect.gen(function* () {
     clips.push({ start, end });
 
     const more = yield* Effect.promise(() => 
-      p.confirm({ message: "Tambah potongan lagi?" })
+      p.confirm({ message: "Lagi?" })
     );
     if (p.isCancel(more) || !more) addMore = false;
   }
 
   if (clips.length === 0) {
     yield* Fiber.interrupt(downloadFiber);
-    return yield* Effect.logInfo("Tidak ada potongan yang dimasukkan.");
+    return;
   }
 
   const finalSpinner = p.spinner();
-  finalSpinner.start("Menunggu unduhan latar belakang selesai...");
+  finalSpinner.start("Menunggu unduhan latar belakang...");
   
   const pathResult = yield* Deferred.await(downloadDone);
   
@@ -148,8 +148,8 @@ const main = Effect.gen(function* () {
         yield* cropper.crop(pathResult, clipPath, clip.start, clip.end);
       }
 
-      finalSpinner.stop("Semua proses selesai! 🎉");
-      p.outro(`Hasil tersimpan di folder ${outputDir}`);
+      finalSpinner.stop("Selesai! 🎉");
+      p.outro(`Hasil di folder ${outputDir}`);
     })
   );
 });

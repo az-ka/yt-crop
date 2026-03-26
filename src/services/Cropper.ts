@@ -32,12 +32,8 @@ export const CropperLive = Layer.succeed(
           "-preset", "ultrafast", 
           "-c:a", "aac", 
           absoluteOutput
-        ).pipe(
-          Command.stdout("inherit"),
-          Command.stderr("inherit")
         )
         
-        yield* Effect.logInfo(`Cropping to: ${absoluteOutput}`)
         const exitCode = yield* Command.exitCode(command)
         
         if (exitCode !== 0) {
