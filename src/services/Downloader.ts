@@ -1,8 +1,8 @@
-import { Command } from "@effect/platform"
+import { Command, CommandExecutor } from "@effect/platform"
 import { Effect, Context, Layer } from "effect"
 
 export interface Downloader {
-  readonly download: (url: string, destination: string) => Effect.Effect<string, Error>
+  readonly download: (url: string, destination: string) => Effect.Effect<string, Error, CommandExecutor.CommandExecutor>
 }
 
 export const Downloader = Context.GenericTag<Downloader>("@services/Downloader")

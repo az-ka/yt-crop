@@ -17,7 +17,7 @@ const main = Effect.gen(function* () {
       message: "Masukkan URL YouTube:",
       validate: (value) => {
         try {
-          Schema.decodeSync(VideoUrlSchema)(value);
+          Schema.decodeSync(VideoUrlSchema)(value || "");
         } catch (_) {
           return "URL tidak valid!";
         }
@@ -36,7 +36,7 @@ const main = Effect.gen(function* () {
       p.text({
         message: `Potongan #${clips.length + 1} - Mulai (HH:MM:SS atau detik):`,
         validate: (value) => {
-          try { Schema.decodeSync(TimeFormatSchema)(value); } catch (_) { return "Format waktu salah!"; }
+          try { Schema.decodeSync(TimeFormatSchema)(value || ""); } catch (_) { return "Format waktu salah!"; }
         }
       })
     );
@@ -46,13 +46,13 @@ const main = Effect.gen(function* () {
       p.text({
         message: `Potongan #${clips.length + 1} - Sampai (HH:MM:SS atau detik):`,
         validate: (value) => {
-          try { Schema.decodeSync(TimeFormatSchema)(value); } catch (_) { return "Format waktu salah!"; }
+          try { Schema.decodeSync(TimeFormatSchema)(value || ""); } catch (_) { return "Format waktu salah!"; }
         }
       })
     );
     if (p.isCancel(end)) break;
 
-    clips.push({ start, end });
+    clips.push({ start: start as string, end: end as string });
 
     const more = yield* Effect.promise(() => 
       p.confirm({ message: "Tambah potongan lagi?" })
@@ -117,9 +117,10 @@ const ProgramLive = Layer.mergeAll(
 
 main.pipe(
   Effect.provide(ProgramLive),
-  Effect.catchAllCause((cause) => {
-    p.cancel(`Terjadi kesalahan: ${Cause.pretty(cause)}`);
-    return Effect.void;
-  }),
+  Effect.catchAllCause((cause) =>
+    Effect.sync(() => {
+      p.cancel(`Terjadi kesalahan: ${Cause.pretty(cause)}`);
+    })
+  ),
   NodeRuntime.runMain
 );
