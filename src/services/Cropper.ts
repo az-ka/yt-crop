@@ -1,5 +1,6 @@
 import { Command, CommandExecutor } from "@effect/platform"
 import { Effect, Context, Layer } from "effect"
+import * as path from "path"
 
 export interface Cropper {
   readonly crop: (
@@ -17,19 +18,35 @@ export const CropperLive = Layer.succeed(
   {
     crop: (input, output, start, end) =>
       Effect.gen(function* () {
-        // Taruh -ss dan -to sebelum -i agar cepat (fast seek)
-        // Hapus -c copy untuk re-encoding agar video pasti bisa dibuka dan presisi
-        const command = Command.make("ffmpeg", "-ss", start, "-to", end, "-i", input, "-preset", "ultrafast", output)
-        yield* Effect.logInfo(`Cropping: ${input} -> ${output} (${start} to ${end})`)
+        const absoluteInput = path.resolve(input)
+        const absoluteOutput = path.resolve(output)
+        
+        const command = Command.make(
+          "ffmpeg", 
+          "-y", 
+          "-ss", start, 
+          "-to", end, 
+          "-i", absoluteInput, 
+          "-c:v", "libx264", 
+          "-pix_fmt", "yuv420p", 
+          "-preset", "ultrafast", 
+          "-c:a", "aac", 
+          absoluteOutput
+        ).pipe(
+          Command.stdout("inherit"),
+          Command.stderr("inherit")
+        )
+        
+        yield* Effect.logInfo(`Cropping to: ${absoluteOutput}`)
         const exitCode = yield* Command.exitCode(command)
         
         if (exitCode !== 0) {
           return yield* Effect.fail(new Error(`ffmpeg gagal dengan exit code ${exitCode}`))
         }
         
-        return output
+        return absoluteOutput
       }).pipe(
-        Effect.catchAll(() => Effect.fail(new Error(`Gagal memotong video pada rentang ${start} - ${end}`)))
+        Effect.catchAll((e) => Effect.fail(new Error(`Gagal memotong video: ${e}`)))
       ),
   }
 )
