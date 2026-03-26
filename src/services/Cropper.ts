@@ -1,5 +1,5 @@
 import { Command } from "@effect/platform"
-import { Effect, Context } from "effect"
+import { Effect, Context, Layer } from "effect"
 
 export interface Cropper {
   readonly crop: (
@@ -10,10 +10,11 @@ export interface Cropper {
   ) => Effect.Effect<string, Error>
 }
 
-export const Cropper = Context.Tag<Cropper>("@services/Cropper")
+export const Cropper = Context.GenericTag<Cropper>("@services/Cropper")
 
-export const CropperLive = Effect.succeed(
-  Cropper.of({
+export const CropperLive = Layer.succeed(
+  Cropper,
+  {
     crop: (input, output, start, end) =>
       Effect.gen(function* () {
         // -ss (mulai) -to (berhenti)
@@ -30,5 +31,5 @@ export const CropperLive = Effect.succeed(
       }).pipe(
         Effect.catchAll(() => Effect.fail(new Error(`Gagal memotong video pada rentang ${start} - ${end}`)))
       ),
-  })
+  }
 )

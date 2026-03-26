@@ -1,14 +1,15 @@
 import { Command } from "@effect/platform"
-import { Effect, Context } from "effect"
+import { Effect, Context, Layer } from "effect"
 
 export interface Downloader {
   readonly download: (url: string, destination: string) => Effect.Effect<string, Error>
 }
 
-export const Downloader = Context.Tag<Downloader>("@services/Downloader")
+export const Downloader = Context.GenericTag<Downloader>("@services/Downloader")
 
-export const DownloaderLive = Effect.succeed(
-  Downloader.of({
+export const DownloaderLive = Layer.succeed(
+  Downloader,
+  {
     download: (url, destination) =>
       Effect.gen(function* () {
         // -f 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' (Video berkualitas terbaik berformat mp4)
@@ -24,5 +25,5 @@ export const DownloaderLive = Effect.succeed(
       }).pipe(
         Effect.catchAll(() => Effect.fail(new Error(`Gagal mengunduh video dari ${url}`)))
       ),
-  })
+  }
 )
