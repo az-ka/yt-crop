@@ -30,12 +30,18 @@ const main = Effect.gen(function* () {
   const rawVideoPath = path.resolve(path.join(tempDir, `raw_${Date.now()}.mp4`));
   
   const s = p.spinner();
-  s.start("Mengecek durasi video...");
+  s.start("Mengecek info video...");
+  const title = yield* downloader.getTitle(url);
   const totalSeconds = yield* downloader.getDuration(url);
+  
+  // Sanitasi Judul untuk nama folder
+  const sanitizedTitle = title.replace(/[\\\/:*?"<>|]/g, "_");
+  const videoOutputDir = path.resolve(path.join(outputDir, sanitizedTitle));
+  
   const totalMinutes = Math.floor(totalSeconds / 60);
   const totalRemainingSeconds = totalSeconds % 60;
   const durationLabel = `${totalMinutes}:${totalRemainingSeconds.toString().padStart(2, "0")}`;
-  s.stop(`Durasi Video: ${durationLabel} (${totalSeconds} detik)`);
+  s.stop(`Video: ${title} (${durationLabel})`);
 
   // Mulai download di latar belakang
   const downloadDone = yield* Deferred.make<string, Error>();
@@ -43,7 +49,7 @@ const main = Effect.gen(function* () {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       yield* fs.makeDirectory(tempDir, { recursive: true }).pipe(Effect.ignore);
-      yield* fs.makeDirectory(outputDir, { recursive: true }).pipe(Effect.ignore);
+      yield* fs.makeDirectory(videoOutputDir, { recursive: true }).pipe(Effect.ignore);
       
       yield* downloader.download(url, rawVideoPath);
       yield* Deferred.succeed(downloadDone, rawVideoPath);
@@ -59,8 +65,6 @@ const main = Effect.gen(function* () {
   const normalizeTime = (input: string): string => {
     const digits = input.replace(/\D/g, "");
     if (digits.length === 0) return input;
-    
-    // Jika input murni angka, format menjadi HH:MM:SS dari kanan ke kiri
     if (/^\d+$/.test(input) && input.length > 2) {
       const padded = digits.padStart(6, "0");
       const hh = padded.slice(0, 2);
@@ -115,9 +119,7 @@ const main = Effect.gen(function* () {
 
     clips.push({ start, end });
 
-    const more = yield* Effect.promise(() => 
-      p.confirm({ message: "Lagi?" })
-    );
+    const more = yield* Effect.promise(() => p.confirm({ message: "Lagi?" }));
     if (p.isCancel(more) || !more) addMore = false;
   }
 
@@ -136,36 +138,30 @@ const main = Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const cropper = yield* Cropper;
 
-      yield* Effect.addFinalizer(() => 
-        fs.remove(pathResult).pipe(Effect.ignore)
-      );
+      yield* Effect.addFinalizer(() => fs.remove(pathResult).pipe(Effect.ignore));
 
       for (let i = 0; i < clips.length; i++) {
         const clip = clips[i];
-        const clipPath = path.resolve(path.join(outputDir, `clip_${i + 1}_${Date.now()}.mp4`));
+        const clipNumber = (i + 1).toString().padStart(2, "0");
+        const clipName = `Part ${clipNumber} - ${sanitizedTitle}.mp4`;
+        const clipPath = path.resolve(path.join(videoOutputDir, clipName));
         
         finalSpinner.message(`Memotong klip ${i + 1}/${clips.length}...`);
         yield* cropper.crop(pathResult, clipPath, clip.start, clip.end);
       }
 
       finalSpinner.stop("Selesai! 🎉");
-      p.outro(`Hasil di folder ${outputDir}`);
+      p.outro(`Hasil di folder: output/${sanitizedTitle}`);
     })
   );
 });
 
-const ProgramLive = Layer.mergeAll(
-  DownloaderLive, 
-  CropperLive,
-  NodeContext.layer
-);
+const ProgramLive = Layer.mergeAll(DownloaderLive, CropperLive, NodeContext.layer);
 
 main.pipe(
   Effect.provide(ProgramLive),
   Effect.catchAllCause((cause) =>
-    Effect.sync(() => {
-      p.cancel(`Terjadi kesalahan: ${Cause.pretty(cause)}`);
-    })
+    Effect.sync(() => { p.cancel(`Terjadi kesalahan: ${Cause.pretty(cause)}`); })
   ),
   NodeRuntime.runMain
 );

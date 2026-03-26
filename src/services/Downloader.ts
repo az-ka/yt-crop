@@ -5,6 +5,7 @@ import * as path from "path"
 export interface Downloader {
   readonly download: (url: string, destination: string) => Effect.Effect<string, Error, CommandExecutor.CommandExecutor>
   readonly getDuration: (url: string) => Effect.Effect<number, Error, CommandExecutor.CommandExecutor>
+  readonly getTitle: (url: string) => Effect.Effect<string, Error, CommandExecutor.CommandExecutor>
 }
 
 export const Downloader = Context.GenericTag<Downloader>("@services/Downloader")
@@ -12,6 +13,14 @@ export const Downloader = Context.GenericTag<Downloader>("@services/Downloader")
 export const DownloaderLive = Layer.succeed(
   Downloader,
   {
+    getTitle: (url) =>
+      Effect.gen(function* () {
+        const command = Command.make("yt-dlp", "--get-title", url)
+        const output = yield* Command.lines(command)
+        return output[0] || "video"
+      }).pipe(
+        Effect.catchAll(() => Effect.succeed("video"))
+      ),
     getDuration: (url) => 
       Effect.gen(function* () {
         const command = Command.make("yt-dlp", "--get-duration", url)
