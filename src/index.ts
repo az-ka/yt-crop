@@ -109,8 +109,10 @@ const main = Effect.gen(function* () {
   );
 });
 
-const ProgramLive = Layer.mergeAll(DownloaderLive, CropperLive).pipe(
-  Layer.provide(NodeContext.layer)
+const ProgramLive = Layer.mergeAll(
+  DownloaderLive, 
+  CropperLive,
+  NodeContext.layer
 );
 
 main.pipe(
