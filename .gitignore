@@ -4,3 +4,4 @@ temp/
 output/*.mp4
 .env
 *.log
+output/

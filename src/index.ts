@@ -121,19 +121,24 @@ const main = Effect.gen(function* () {
 
     const more = yield* Effect.promise(() => p.confirm({ message: "Lagi?" }));
     if (p.isCancel(more) || !more) addMore = false;
-  }
+    }
 
-  if (clips.length === 0) {
+    if (clips.length === 0) {
     yield* Fiber.interrupt(downloadFiber);
     return;
-  }
+    }
 
-  const finalSpinner = p.spinner();
-  finalSpinner.start("Menunggu unduhan latar belakang...");
-  
-  const pathResult = yield* Deferred.await(downloadDone);
-  
-  yield* Effect.scoped(
+    // TANYA KOMPRESI
+    const shouldCompress = yield* Effect.promise(() => 
+    p.confirm({ message: "Kompres video (Size lebih kecil, kualitas tetap)?", initialValue: false })
+    );
+
+    const finalSpinner = p.spinner();
+    finalSpinner.start("Menunggu unduhan latar belakang...");
+
+    const pathResult = yield* Deferred.await(downloadDone);
+
+    yield* Effect.scoped(
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const cropper = yield* Cropper;
@@ -145,15 +150,15 @@ const main = Effect.gen(function* () {
         const clipNumber = (i + 1).toString().padStart(2, "0");
         const clipName = `Part ${clipNumber} - ${sanitizedTitle}.mp4`;
         const clipPath = path.resolve(path.join(videoOutputDir, clipName));
-        
+
         finalSpinner.message(`Memotong klip ${i + 1}/${clips.length}...`);
-        yield* cropper.crop(pathResult, clipPath, clip.start, clip.end);
+        yield* cropper.crop(pathResult, clipPath, clip.start, clip.end, shouldCompress as boolean);
       }
 
       finalSpinner.stop("Selesai! 🎉");
       p.outro(`Hasil di folder: output/${sanitizedTitle}`);
     })
-  );
+    );
 });
 
 const ProgramLive = Layer.mergeAll(DownloaderLive, CropperLive, NodeContext.layer);
